@@ -11,13 +11,20 @@ const NGUONG_GHI_DINH_KY = parseInt(process.env.NGUONG_GHI_DINH_KY || '50', 10);
 
 const THU_MUC_DATA = './thu_muc_du_lieu';
 
+console.log('==================================================');
+console.log('[KHỞI ĐỘNG] Cấu hình bot:');
+console.log(` - URL bắt đầu: ${URL_BAT_DAU}`);
+console.log(` - Tối đa trang: ${TOI_DA_TRANG}`);
+console.log(` - Luồng đồng thời: ${SO_LUONG_CAO_CUNG_LUC}`);
+console.log(` - Ngưỡng ghi đĩa: ${NGUONG_GHI_DINH_KY} trang`);
+console.log('==================================================');
+
 // --- HÀM TỰ CHIA NHỎ VÀ GHI FILE DƯỚI 18MB ---
 function ghiDuLieuChiaNho(tenTienTo, duLieu, maxMB = 18) {
   if (!fs.existsSync(THU_MUC_DATA)) {
     fs.mkdirSync(THU_MUC_DATA, { recursive: true });
   }
 
-  // Dọn dẹp các file part cũ của tiền tố này
   const fileCu = fs.readdirSync(THU_MUC_DATA);
   for (const f of fileCu) {
     if (f.startsWith(`${tenTienTo}_phieu_`) || f === `${tenTienTo}_tong_quan.json`) {
@@ -34,9 +41,9 @@ function ghiDuLieuChiaNho(tenTienTo, duLieu, maxMB = 18) {
 
     for (const item of duLieu) {
       const chuoi = JSON.stringify(item);
-      const kíchThuoc = Buffer.byteLength(chuoi, 'utf-8');
+      const kichThuoc = Buffer.byteLength(chuoi, 'utf-8');
 
-      if (dungLuongHienTai + kíchThuoc > maxBytes && phieuHienTai.length > 0) {
+      if (dungLuongHienTai + kichThuoc > maxBytes && phieuHienTai.length > 0) {
         fs.writeFileSync(
           path.join(THU_MUC_DATA, `${tenTienTo}_phieu_${chiSoPhieu}.json`),
           JSON.stringify(phieuHienTai),
@@ -47,7 +54,7 @@ function ghiDuLieuChiaNho(tenTienTo, duLieu, maxMB = 18) {
         dungLuongHienTai = 0;
       }
       phieuHienTai.push(item);
-      dungLuongHienTai += kíchThuoc;
+      dungLuongHienTai += kichThuoc;
     }
 
     if (phieuHienTai.length > 0) {
@@ -71,9 +78,9 @@ function ghiDuLieuChiaNho(tenTienTo, duLieu, maxMB = 18) {
 
     for (const khoa of dacCacKhoa) {
       const chuoiGiaTri = JSON.stringify(duLieu[khoa]);
-      const kíchThuoc = Buffer.byteLength(`"${khoa}":${chuoiGiaTri},`, 'utf-8');
+      const kichThuoc = Buffer.byteLength(`"${khoa}":${chuoiGiaTri},`, 'utf-8');
 
-      if (dungLuongHienTai + kíchThuoc > maxBytes && Object.keys(phieuHienTai).length > 0) {
+      if (dungLuongHienTai + kichThuoc > maxBytes && Object.keys(phieuHienTai).length > 0) {
         fs.writeFileSync(
           path.join(THU_MUC_DATA, `${tenTienTo}_phieu_${chiSoPhieu}.json`),
           JSON.stringify(phieuHienTai),
@@ -84,7 +91,7 @@ function ghiDuLieuChiaNho(tenTienTo, duLieu, maxMB = 18) {
         dungLuongHienTai = 0;
       }
       phieuHienTai[khoa] = duLieu[khoa];
-      dungLuongHienTai += kíchThuoc;
+      dungLuongHienTai += kichThuoc;
     }
 
     if (Object.keys(phieuHienTai).length > 0) {
@@ -106,11 +113,15 @@ function ghiDuLieuChiaNho(tenTienTo, duLieu, maxMB = 18) {
 // --- HÀM ĐỌC DỮ LIỆU TỪ CÁC FILE CHIA NHỎ ---
 function docDuLieuChiaNho(tenTienTo, giaTriMacDinh) {
   const fileTongQuan = path.join(THU_MUC_DATA, `${tenTienTo}_tong_quan.json`);
-  if (!fs.existsSync(fileTongQuan)) return giaTriMacDinh;
+  if (!fs.existsSync(fileTongQuan)) {
+    console.log(`[ĐỌC FILE] Không tìm thấy dữ liệu cũ cho '${tenTienTo}', khởi tạo mới.`);
+    return giaTriMacDinh;
+  }
 
   try {
     const tongQuan = JSON.parse(fs.readFileSync(fileTongQuan, 'utf-8'));
-    
+    console.log(`[ĐỌC FILE] Nạp '${tenTienTo}': Tìm thấy ${tongQuan.tongSoPhieu} phiếu...`);
+
     if (Array.isArray(giaTriMacDinh)) {
       let ketQua = [];
       for (let i = 1; i <= tongQuan.tongSoPhieu; i++) {
@@ -133,11 +144,13 @@ function docDuLieuChiaNho(tenTienTo, giaTriMacDinh) {
       return ketQua;
     }
   } catch (e) {
+    console.error(`[LỖI ĐỌC FILE] File '${tenTienTo}' bị lỗi cấu trúc: ${e.message}`);
     return giaTriMacDinh;
   }
 }
 
 // --- KHỞI TẠO DỮ LIỆU ---
+console.log('[NẠP DỮ LIỆU] Đang đọc trạng thái cũ từ đĩa...');
 let tuDien = docDuLieuChiaNho('tu_dien', {}); 
 let mucLucNguoc = docDuLieuChiaNho('muc_luc_nguoc', {}); 
 let khoTaiLieu = docDuLieuChiaNho('kho_tai_lieu', {}); 
@@ -146,9 +159,21 @@ let daCaoSet = new Set(daCaoList);
 let doThiLienKet = docDuLieuChiaNho('do_thi_lien_ket', {}); 
 let hangDoiCho = docDuLieuChiaNho('hang_doi_cho', []);
 
-if (hangDoiCho.length === 0) {
+// FIX LỖI THOÁT NGAY LẬP TỨC: Kiểm tra hàng đợi xem có đường link nào thực sự chưa cào không
+const chuaCaoKhong = hangDoiCho.some(u => !daCaoSet.has(u));
+
+if (hangDoiCho.length === 0 || !chuaCaoKhong) {
+  console.log('[LOG HÀNG ĐỢI] Hàng đợi rỗng hoặc tất cả link trong hàng đợi đều đã cào. Đẩy lại URL_BAT_DAU!');
   hangDoiCho.push(URL_BAT_DAU);
+  daCaoSet.delete(URL_BAT_DAU);
+  daCaoList = daCaoList.filter(u => u !== URL_BAT_DAU);
 }
+
+console.log(`[TRẠNG THÁI KHỞI ĐỘNG]:`);
+console.log(` - Kho tài liệu: ${Object.keys(khoTaiLieu).length} trang`);
+console.log(` - Từ điển: ${Object.keys(tuDien).length} từ`);
+console.log(` - Đã cào: ${daCaoSet.size} URL`);
+console.log(` - Hàng đợi còn: ${hangDoiCho.length} URL`);
 
 let mapUrlToDocId = {};
 for (const [dId, info] of Object.entries(khoTaiLieu)) {
@@ -164,7 +189,10 @@ let soTrangCanGhiBu = 0;
 function tinhToanPageRank() {
   console.log('[PAGERANK] Đang chạy thuật toán tính điểm uy tín trang...');
   const soLuongDoc = Object.keys(khoTaiLieu).length;
-  if (soLuongDoc === 0) return;
+  if (soLuongDoc === 0) {
+    console.log('[PAGERANK] Kho tài liệu rỗng, bỏ qua tính toán.');
+    return;
+  }
 
   const dampingFactor = 0.85;
   const iterations = 20;
@@ -203,7 +231,7 @@ function tinhToanPageRank() {
 }
 
 function luuTatCaXuongDia() {
-  console.log('[HỆ THỐNG] Đang chạy PageRank và chia nhỏ lưu dữ liệu...');
+  console.log('[GHI ĐĨA] Bắt đầu đồng bộ dữ liệu xuống đĩa...');
   tinhToanPageRank();
   ghiDuLieuChiaNho('tu_dien', tuDien);
   ghiDuLieuChiaNho('muc_luc_nguoc', mucLucNguoc);
@@ -212,37 +240,45 @@ function luuTatCaXuongDia() {
   ghiDuLieuChiaNho('do_thi_lien_ket', doThiLienKet);
   ghiDuLieuChiaNho('hang_doi_cho', hangDoiCho);
   soTrangCanGhiBu = 0;
-  console.log('[HỆ THỐNG] Đã đồng bộ dữ liệu hoàn tất!');
+  console.log('[GHI ĐĨA] Đã ghi xong toàn bộ dữ liệu!');
 }
 
 async function xuLyMotTrang(urlDangXuLy) {
-  console.log(`[ĐANG CÀO (${soTrangDaCaoTrongPhien + 1}/${TOI_DA_TRANG})] -> ${urlDangXuLy}`);
+  const stt = soTrangDaCaoTrongPhien + 1;
+  console.log(`\n[BẮT ĐẦU CÀO #${stt}/${TOI_DA_TRANG}] -> ${urlDangXuLy}`);
+
   try {
+    const startTime = Date.now();
     const response = await axios.get(urlDangXuLy, { 
-      timeout: 20000,
+      timeout: 30000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-        'Referer': 'https://www.google.com/'
-      },
-      validateStatus: (status) => status === 200
+        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7'
+      }
     });
 
+    const duration = Date.now() - startTime;
+    console.log(` [HTTP ${response.status}] Tải trang thành công trong ${duration}ms`);
+
     const maHtml = response.data;
-    if (!maHtml || typeof maHtml !== 'string') return;
+    if (!maHtml || typeof maHtml !== 'string') {
+      console.log(` [BỎ QUA] Trả về không phải dạng văn bản HTML.`);
+      return;
+    }
 
     const $ = cheerio.load(maHtml);
     const tieuDe = $('title').text().trim() || 'Không có tiêu đề';
     
-    // Loại bỏ script, style để lọc nội dung sạch
-    $('script, style, noscript').remove();
+    $('script, style, noscript, iframe').remove();
     const noiDungTho = $('body').text().toLowerCase();
     const chuoiSachSe = noiDungTho.replace(/[^\w\sàáạảãâấầẩẫậăắằẳẵặèéẹẻẽêếềểễệìíịỉĩòóọỏõôốồổỗộơớờởỡợùúụủũưứừửữựỳýỵỷỹđ]/g, ' ');
     const danhSachTu = chuoiSachSe.split(/\s+/).filter(tu => tu.length > 1);
 
-    if (danhSachTu.length === 0) return;
+    if (danhSachTu.length === 0) {
+      console.log(` [BỎ QUA] Không bóc tách được từ ngữ nào.`);
+      return;
+    }
 
     const docId = docIdHienTai++;
     mapUrlToDocId[urlDangXuLy] = docId;
@@ -267,17 +303,16 @@ async function xuLyMotTrang(urlDangXuLy) {
     soTrangDaCaoTrongPhien++;
     soTrangCanGhiBu++;
 
-    if (soTrangCanGhiBu >= NGUONG_GHI_DINH_KY) {
-      luuTatCaXuongDia();
-    }
+    console.log(` [HOÀN THÀNH #${stt}] Tiêu đề: "${tieuDe}" | Bóc tách: ${danhSachTu.length} từ (Độc bản: ${Object.keys(viTriTu).length})`);
 
+    let linkMoiThem = 0;
     $('a[href]').each((_, el) => {
       let linkMoi = $(el).attr('href');
       if (linkMoi && !linkMoi.startsWith('javascript:') && !linkMoi.startsWith('#')) {
         try {
           const urlHoanChinh = new URL(linkMoi, urlDangXuLy).href;
-          const dinhDangBaoQua = /\.(png|jpg|jpeg|gif|svg|pdf|zip|rar|css|js)$/i;
-          
+          const dinhDangBaoQua = /\.(png|jpg|jpeg|gif|svg|pdf|zip|rar|css|js|mp4|mp3)$/i;
+
           if (urlHoanChinh.startsWith('http') && !dinhDangBaoQua.test(urlHoanChinh)) {
             if (mapUrlToDocId[urlHoanChinh]) {
               const targetDocId = mapUrlToDocId[urlHoanChinh];
@@ -287,33 +322,49 @@ async function xuLyMotTrang(urlDangXuLy) {
             }
             if (!daCaoSet.has(urlHoanChinh) && !hangDoiCho.includes(urlHoanChinh)) {
               hangDoiCho.push(urlHoanChinh);
+              linkMoiThem++;
             }
           }
         } catch (e) {}
       }
     });
 
+    console.log(` [LIÊN KẾT] Đã phát hiện và nạp thêm +${linkMoiThem} link mới vào hàng đợi.`);
+
+    if (soTrangCanGhiBu >= NGUONG_GHI_DINH_KY) {
+      console.log(` [MỐC LƯU] Đã đạt ngưỡng ${NGUONG_GHI_DINH_KY} trang, chuẩn bị đồng bộ đĩa...`);
+      luuTatCaXuongDia();
+    }
+
   } catch (err) {
-    console.error(`[LỖI CÀO] ${urlDangXuLy} -> ${err.message}`);
+    if (err.response) {
+      console.error(` [LỖI HTTP ${err.response.status}] ${urlDangXuLy}`);
+    } else if (err.code === 'ECONNABORTED') {
+      console.error(` [LỖI TIMEOUT] Quá 30 giây không nhận được phản hồi từ ${urlDangXuLy}`);
+    } else {
+      console.error(` [LỖI KẾT NỐI] ${urlDangXuLy} -> ${err.message}`);
+    }
   }
 }
 
 function chayBotCrawl() {
   if (soTrangDaCaoTrongPhien >= TOI_DA_TRANG) {
-    console.log('Đã thu thập đủ số lượng trang yêu cầu!');
+    console.log('\n[KẾT THÚC SEED] Đã cào đủ số lượng trang yêu cầu!');
     luuTatCaXuongDia(); 
     return;
   }
 
   if (hangDoiCho.length === 0 && dangChay === 0) {
-    console.log('Đã cạn sạch đường link trong hàng đợi!');
+    console.log('\n[KẾT THÚC SEED] Hàng đợi hoàn toàn rỗng!');
     luuTatCaXuongDia();
     return;
   }
 
   while (dangChay < SO_LUONG_CAO_CUNG_LUC && hangDoiCho.length > 0 && soTrangDaCaoTrongPhien < TOI_DA_TRANG) {
     const urlDangXuLy = hangDoiCho.shift();
-    if (daCaoSet.has(urlDangXuLy)) continue;
+    if (daCaoSet.has(urlDangXuLy)) {
+      continue;
+    }
 
     daCaoSet.add(urlDangXuLy);
     daCaoList.push(urlDangXuLy);
@@ -327,9 +378,10 @@ function chayBotCrawl() {
 }
 
 process.on('SIGINT', () => {
-  console.log('\n[CẢNH BÁO] Dừng chương trình! Đang lưu dữ liệu...');
+  console.log('\n[CẢNH BÁO] Nhận lệnh ngắt khẩn cấp! Đang lưu dữ liệu xuống đĩa...');
   luuTatCaXuongDia();
   process.exit();
 });
 
+console.log('[BẮT ĐẦU VÒNG LẶP CÀO...]');
 chayBotCrawl();
