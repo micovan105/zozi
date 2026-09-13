@@ -218,18 +218,31 @@ function luuTatCaXuongDia() {
 async function xuLyMotTrang(urlDangXuLy) {
   console.log(`[ĐANG CÀO (${soTrangDaCaoTrongPhien + 1}/${TOI_DA_TRANG})] -> ${urlDangXuLy}`);
   try {
-    const { data: maHtml } = await axios.get(urlDangXuLy, { 
-      timeout: 30000, // Tăng lên 30s để hạn chế lỗi timeout
+    const response = await axios.get(urlDangXuLy, { 
+      timeout: 20000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Referer': 'https://www.google.com/'
+      },
+      validateStatus: (status) => status === 200
     });
+
+    const maHtml = response.data;
+    if (!maHtml || typeof maHtml !== 'string') return;
+
     const $ = cheerio.load(maHtml);
     const tieuDe = $('title').text().trim() || 'Không có tiêu đề';
     
+    // Loại bỏ script, style để lọc nội dung sạch
+    $('script, style, noscript').remove();
     const noiDungTho = $('body').text().toLowerCase();
     const chuoiSachSe = noiDungTho.replace(/[^\w\sàáạảãâấầẩẫậăắằẳẵặèéẹẻẽêếềểễệìíịỉĩòóọỏõôốồổỗộơớờởỡợùúụủũưứừửữựỳýỵỷỹđ]/g, ' ');
     const danhSachTu = chuoiSachSe.split(/\s+/).filter(tu => tu.length > 1);
+
+    if (danhSachTu.length === 0) return;
 
     const docId = docIdHienTai++;
     mapUrlToDocId[urlDangXuLy] = docId;
@@ -260,10 +273,12 @@ async function xuLyMotTrang(urlDangXuLy) {
 
     $('a[href]').each((_, el) => {
       let linkMoi = $(el).attr('href');
-      if (linkMoi) {
+      if (linkMoi && !linkMoi.startsWith('javascript:') && !linkMoi.startsWith('#')) {
         try {
           const urlHoanChinh = new URL(linkMoi, urlDangXuLy).href;
-          if (urlHoanChinh.startsWith('http')) {
+          const dinhDangBaoQua = /\.(png|jpg|jpeg|gif|svg|pdf|zip|rar|css|js)$/i;
+          
+          if (urlHoanChinh.startsWith('http') && !dinhDangBaoQua.test(urlHoanChinh)) {
             if (mapUrlToDocId[urlHoanChinh]) {
               const targetDocId = mapUrlToDocId[urlHoanChinh];
               if (!doThiLienKet[docId].includes(targetDocId)) {
@@ -279,7 +294,7 @@ async function xuLyMotTrang(urlDangXuLy) {
     });
 
   } catch (err) {
-    console.error(`Lỗi ngỏm ở trang ${urlDangXuLy}:`, err.message);
+    console.error(`[LỖI CÀO] ${urlDangXuLy} -> ${err.message}`);
   }
 }
 
