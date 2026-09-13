@@ -159,7 +159,6 @@ let daCaoSet = new Set(daCaoList);
 let doThiLienKet = docDuLieuChiaNho('do_thi_lien_ket', {}); 
 let hangDoiCho = docDuLieuChiaNho('hang_doi_cho', []);
 
-// FIX LỖI THOÁT NGAY LẬP TỨC: Kiểm tra hàng đợi xem có đường link nào thực sự chưa cào không
 const chuaCaoKhong = hangDoiCho.some(u => !daCaoSet.has(u));
 
 if (hangDoiCho.length === 0 || !chuaCaoKhong) {
@@ -250,11 +249,21 @@ async function xuLyMotTrang(urlDangXuLy) {
   try {
     const startTime = Date.now();
     const response = await axios.get(urlDangXuLy, { 
-      timeout: 30000,
+      timeout: 15000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Sec-Ch-Ua': '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1'
       }
     });
 
@@ -340,7 +349,7 @@ async function xuLyMotTrang(urlDangXuLy) {
     if (err.response) {
       console.error(` [LỖI HTTP ${err.response.status}] ${urlDangXuLy}`);
     } else if (err.code === 'ECONNABORTED') {
-      console.error(` [LỖI TIMEOUT] Quá 30 giây không nhận được phản hồi từ ${urlDangXuLy}`);
+      console.error(` [LỖI TIMEOUT] Hết 15s timeout kết nối từ ${urlDangXuLy}`);
     } else {
       console.error(` [LỖI KẾT NỐI] ${urlDangXuLy} -> ${err.message}`);
     }
