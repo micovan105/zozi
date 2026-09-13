@@ -26,6 +26,9 @@ jobs:
   chay-bot-cao:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Lấy mã nguồn từ Repository
         uses: actions/checkout@v4
