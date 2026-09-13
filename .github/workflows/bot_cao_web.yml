@@ -1,0 +1,54 @@
+name: Bot Cào Web Tự Động 24/7
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' # Cứ 2 tiếng tự động chạy 1 lần
+  workflow_dispatch:
+    inputs:
+      url_bat_dau:
+        description: 'Trang bắt đầu cào (URL)'
+        required: true
+        default: 'https://www.thegioididong.com/game-app/'
+      toi_da_trang:
+        description: 'Số lượng trang cào đợt này'
+        required: true
+        default: '500'
+      luong_quet:
+        description: 'Số luồng quét cùng lúc (So luong cao cung luc)'
+        required: true
+        default: '10'
+      nguong_ghi:
+        description: 'Số trang cào xong thì ghi lưu dần'
+        required: true
+        default: '50'
+
+jobs:
+  chay-bot-cao:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lấy mã nguồn từ Repository
+        uses: actions/checkout@v4
+
+      - name: Khởi tạo môi trường Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cài đặt thư viện dependencies
+        run: npm install axios cheerio
+
+      - name: Chạy Bot Cào Web
+        env:
+          URL_BAT_DAU: ${{ github.event.inputs.url_bat_dau || 'https://www.thegioididong.com/game-app/' }}
+          TOI_DA_TRANG: ${{ github.event.inputs.toi_da_trang || '500' }}
+          SO_LUONG_CAO_CUNG_LUC: ${{ github.event.inputs.luong_quet || '10' }}
+          NGUONG_GHI_DINH_KY: ${{ github.event.inputs.nguong_ghi || '50' }}
+        run: node cao_web.js
+
+      - name: Tự động Commit & Push dữ liệu mới lên GitHub
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add thu_muc_du_lieu/
+          git diff-index --quiet HEAD || (git commit -m "bot: cập nhật dữ liệu cào tự động [skip ci]" && git push)
